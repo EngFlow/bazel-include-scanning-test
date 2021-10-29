@@ -1,0 +1,43 @@
+{
+  "variables": {
+    "image_region": "eu-west-2",
+    "image_version": "{{isotime \"2006-01-02-15-04\"}}",
+    "action_runner_token": null
+  },
+  "builders": [
+    {
+      "name": "debian10_x64",
+      "type": "amazon-ebs",
+      "region": "{{user `image_region`}}",
+      "source_ami": "ami-080684ad73d431a05",
+      "instance_type": "t3.xlarge",
+      "ssh_username": "admin",
+      "ami_name": "benchmark-ci-image-debian10-x64-{{user `image_version`}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "ci/linux/install.sh",
+      "destination": "/tmp/install.sh"
+    },
+    {
+      "type": "file",
+      "source": "ci/linux/allow_unprivileged_userns_clone.conf",
+      "destination": "/tmp/allow_unprivileged_userns_clone.conf"
+    },
+    {
+      "type": "file",
+      "source": "ci/ca.engflow.com.pub",
+      "destination": "/tmp/ca.engflow.com.pub"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "chmod +x /tmp/install.sh",
+        "/tmp/install.sh '{{user `action_runner_token`}}' '{{user `image_version`}}'",
+        "rm /tmp/install.sh"
+      ]
+    }
+  ]
+}

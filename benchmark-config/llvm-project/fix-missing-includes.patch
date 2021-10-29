@@ -1,0 +1,44 @@
+diff --git a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+index 1996451d34a5..8794cab323fd 100644
+--- a/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
++++ b/utils/bazel/llvm-project-overlay/clang/BUILD.bazel
+@@ -1300,9 +1300,6 @@ cc_library(
+             "lib/Driver/ToolChains/Arch/*.cpp",
+             "lib/Driver/ToolChains/Arch/*.h",
+         ],
+-        exclude = [
+-            "lib/Driver/ToolChains/MSVCSetupApi.h",
+-        ],
+     ),
+     hdrs = glob([
+         "include/clang/Driver/*.h",
+
+diff --git a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
+index 4eb30503b9db..d78fbfa60cf0 100644
+--- a/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
++++ b/utils/bazel/llvm-project-overlay/llvm/BUILD.bazel
+@@ -174,16 +174,11 @@ cc_library(
+         "lib/Support/*.cpp",
+         "lib/Support/*.h",
+         "lib/Support/*.inc",
+-    ]) + select({
+-        "@bazel_tools//src/conditions:windows": glob([
+             "lib/Support/Windows/*.h",
+             "lib/Support/Windows/*.inc",
+-        ]),
+-        "//conditions:default": glob([
+             "lib/Support/Unix/*.h",
+             "lib/Support/Unix/*.inc",
+         ]),
+-    }),
+     hdrs = glob([
+         "include/llvm/Support/**/*.h",
+         "include/llvm/ADT/*.h",
+@@ -376,6 +371,7 @@ cc_library(
+     hdrs = glob([
+         "include/llvm/DebugInfo/PDB/*.h",
+         "include/llvm/DebugInfo/PDB/Native/*.h",
++        "include/llvm/DebugInfo/PDB/DIA/DIASupport.h",
+     ]),
+     copts = llvm_copts,
+     deps = [

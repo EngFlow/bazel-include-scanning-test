@@ -1,0 +1,93 @@
+diff --git a/utils/bazel/.bazelrc b/utils/bazel/.bazelrc
+index ce1d654b94ba..d9ce91d5f48e 100644
+--- a/utils/bazel/.bazelrc
++++ b/utils/bazel/.bazelrc
+@@ -66,7 +66,7 @@ build:generic_gcc --copt=-Wno-maybe-uninitialized --host_copt=-Wno-maybe-uniniti
+ build:generic_gcc --copt=-Wno-misleading-indentation --host_copt=-Wno-misleading-indentation
+ 
+ # Use `-Werror` for GCC to make sure warnings don't slip past.
+-build:generic_gcc --copt=-Werror --host_copt=-Werror
++# build:generic_gcc --copt=-Werror --host_copt=-Werror
+ 
+ ###############################################################################
+ # Windows specific flags for building with VC.
+@@ -97,8 +97,6 @@ build:msvc --copt=/D_CRT_SECURE_NO_WARNINGS --host_copt=/D_CRT_SECURE_NO_WARNING
+ # Based on https://github.com/bazelbuild/bazel-toolchains/blob/master/bazelrc/bazel-1.0.0.bazelrc
+ ###############################################################################
+ 
+-build:rbe --remote_instance_name=projects/llvm-bazel/instances/default_instance
+-
+ # Depending on how many machines are in the remote execution instance, setting
+ # this higher can make builds faster by allowing more jobs to run in parallel.
+ # Setting it too high can result in jobs that timeout, however, while waiting
+@@ -140,11 +138,26 @@ build:rbe --remote_timeout=3600
+ # Local disk cache is incompatible with remote execution (for obvious reasons).
+ build:rbe --disk_cache=""
+ 
+-# Enable authentication. This will pick up application default credentials by
+-# default. You can use --google_credentials=some_file.json to use a service
+-# account credential instead.
+-build:rbe --google_default_credentials=true
+-
+ # The user.bazelrc file is not checked in but available for local mods.
+ # Always keep this at the end of the file so that user flags override.
+ try-import %workspace%/user.bazelrc
++
++# Client side profiling is used for all benchmarks
++build --profile=benchmark-results/profile.gz
++build --execution_log_binary_file=benchmark-results/execution-log-bin
++build --execution_log_json_file=benchmark-results/execution-log.json
++build --config=generic_gcc
++build --experimental_include_scanning
++
++# Disable sandboxing, to get optimal build times. Should be required on CI though.
++build:local --noworker_sandboxing
++build:local --strategy=worker,local
++build:local --spawn_strategy=worker,local
++
++build:engflow --jobs=120
++
++build:engflow --config=rbe
++build:engflow --experimental_inmemory_dotd_files
++build:engflow --spawn_strategy=remote,local
++
++build:bes --bes_lifecycle_events
+diff --git a/utils/bazel/WORKSPACE b/utils/bazel/WORKSPACE
+index 572c9fee878f..c91cfa2a5244 100644
+--- a/utils/bazel/WORKSPACE
++++ b/utils/bazel/WORKSPACE
+@@ -73,14 +73,28 @@ maybe(
+ 
+ http_archive(
+     name = "bazel_toolchains",
+-    sha256 = "1adf5db506a7e3c465a26988514cfc3971af6d5b3c2218925cd6e71ee443fc3f",
+-    strip_prefix = "bazel-toolchains-4.0.0",
++    sha256 = "179ec02f809e86abf56356d8898c8bd74069f1bd7c56044050c2cd3d79d0e024",
++    strip_prefix = "bazel-toolchains-4.1.0",
+     urls = [
+-        "https://mirror.bazel.build/github.com/bazelbuild/bazel-toolchains/releases/download/4.0.0/bazel-toolchains-4.0.0.tar.gz",
+-        "https://github.com/bazelbuild/bazel-toolchains/releases/download/4.0.0/bazel-toolchains-4.0.0.tar.gz",
++        "https://github.com/bazelbuild/bazel-toolchains/releases/download/4.1.0/bazel-toolchains-4.1.0.tar.gz",
++        "https://mirror.bazel.build/github.com/bazelbuild/bazel-toolchains/releases/download/4.1.0/bazel-toolchains-4.1.0.tar.gz",
+     ],
+ )
+ 
+ load("@bazel_toolchains//rules:rbe_repo.bzl", "rbe_autoconfig")
+-
+-rbe_autoconfig(name = "rbe_default")
++load("@bazel_toolchains//rules/exec_properties:exec_properties.bzl", "create_rbe_exec_properties_dict")
++
++# For now, we use a simple Docker image provided by the Bazel project which
++# supports C/C, Java, and Python. The downside of this image compared to the
++# RBE images is that it does not come with configs, so the first build can take
++# about a minute to generate them.
++rbe_autoconfig(
++    name = "rbe_default",
++    detect_java_home = True,
++    digest = "sha256:d318041b3a16e36550e42c443e856d93710e10252e7111431802fe54b99f2dc9",
++    registry = "gcr.io",
++    repository = "bazel-public/ubuntu1804-bazel-java11",
++    use_legacy_platform_definition = False,
++    exec_properties = {
++    },
++)
